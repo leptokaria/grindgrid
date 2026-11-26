@@ -1,15 +1,18 @@
-"""Turn Strava activities into one entry per grid day."""
+"""Turn activities into one entry per grid day."""
 from collections import defaultdict
 from datetime import date, timedelta
 
 GROUPS = ["run", "ride", "strength", "swim", "walk", "other"]
 
+# Garmin Connect activityType.typeKey -> grid group
 SPORT_GROUPS = {
-    **dict.fromkeys(["Run", "TrailRun", "VirtualRun"], "run"),
-    **dict.fromkeys(["Ride", "VirtualRide", "EBikeRide", "MountainBikeRide", "GravelRide"], "ride"),
-    **dict.fromkeys(["WeightTraining", "Crossfit", "Workout", "HighIntensityIntervalTraining"], "strength"),
-    "Swim": "swim",
-    **dict.fromkeys(["Walk", "Hike"], "walk"),
+    **dict.fromkeys(["running", "trail_running", "treadmill_running", "track_running", "indoor_running",
+                     "street_running", "ultra_run", "virtual_run"], "run"),
+    **dict.fromkeys(["cycling", "road_biking", "mountain_biking", "gravel_cycling", "indoor_cycling",
+                     "virtual_ride", "cyclocross", "e_bike_fitness", "e_bike_mountain", "track_cycling"], "ride"),
+    **dict.fromkeys(["strength_training", "hiit", "indoor_cardio"], "strength"),
+    **dict.fromkeys(["lap_swimming", "open_water_swimming", "swimming"], "swim"),
+    **dict.fromkeys(["walking", "casual_walking", "speed_walking", "hiking"], "walk"),
 }
 
 
@@ -37,7 +40,7 @@ def build_days(activities: list[dict], today: date, weeks: int = 53) -> list[dic
     seconds = defaultdict(int)
     by_group = defaultdict(lambda: defaultdict(int))
     for a in activities:
-        # start_date_local carries a fake "Z": the prefix already is the local date
+        # start_date_local is local time: its date prefix is the training day
         day = a["start_date_local"][:10]
         seconds[day] += duration(a)
         by_group[day][sport_group(a["sport_type"])] += duration(a)

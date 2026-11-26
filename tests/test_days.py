@@ -4,7 +4,7 @@ from datetime import date
 from grindgrid.days import build_days, duration, level, sport_group
 
 
-def act(day, sport="Run", moving=1800, elapsed=None, id=1):
+def act(day, sport="running", moving=1800, elapsed=None, id=1):
     return {"id": id, "start_date_local": f"{day}T07:00:00Z", "sport_type": sport,
             "moving_time": moving, "elapsed_time": elapsed if elapsed is not None else moving}
 
@@ -24,9 +24,12 @@ class DaysTest(unittest.TestCase):
         self.assertEqual(duration({"moving_time": 1200, "elapsed_time": 3000}), 1200)
 
     def test_unknown_sport_is_other(self):
-        self.assertEqual(sport_group("Pickleball"), "other")
-        self.assertEqual(sport_group("Yoga"), "other")
-        self.assertEqual(sport_group("TrailRun"), "run")
+        self.assertEqual(sport_group("pickleball"), "other")
+        self.assertEqual(sport_group("yoga"), "other")
+        self.assertEqual(sport_group("trail_running"), "run")
+        self.assertEqual(sport_group("indoor_cycling"), "ride")
+        self.assertEqual(sport_group("lap_swimming"), "swim")
+        self.assertEqual(sport_group("hiking"), "walk")
 
     def test_day_uses_local_date_prefix(self):
         a = act("2026-11-25")
@@ -36,7 +39,7 @@ class DaysTest(unittest.TestCase):
         self.assertEqual(days["2026-11-26"]["seconds"], 0)
 
     def test_same_day_sums_and_dominant_sport(self):
-        acts = [act("2026-11-24", "Run", 1200, id=1), act("2026-11-24", "WeightTraining", 2400, id=2)]
+        acts = [act("2026-11-24", "running", 1200, id=1), act("2026-11-24", "strength_training", 2400, id=2)]
         d = {d["date"]: d for d in build_days(acts, date(2026, 11, 26))}["2026-11-24"]
         self.assertEqual(d["seconds"], 3600)
         self.assertEqual(d["level"], 2)

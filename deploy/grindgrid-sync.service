@@ -1,5 +1,5 @@
 [Unit]
-Description=grindgrid Strava sync
+Description=grindgrid Garmin sync
 After=network-online.target
 Wants=network-online.target
 
@@ -8,4 +8,4 @@ Type=oneshot
 User=grindgrid
 WorkingDirectory=/opt/grindgrid
 EnvironmentFile=/etc/default/grindgrid
-ExecStart=/usr/bin/python3 -m grindgrid.sync
+ExecStart=/opt/grindgrid/venv/bin/python -m grindgrid.sync

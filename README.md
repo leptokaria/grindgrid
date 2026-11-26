@@ -1,7 +1,7 @@
 # grindgrid
 
 A GitHub-style contribution graph for workouts. Every square is a day; it lights up when you trained.
-Activities come from the Strava API, the grid lives on a small self-hosted server, and an iPhone
+Activities come from Garmin Connect, the grid lives on a small self-hosted server, and an iPhone
 home-screen widget shows it at a glance.
 
 ![binary theme](docs/screenshots/binary.png)
@@ -19,19 +19,21 @@ home-screen widget shows it at a glance.
 ## How it works
 
 ```
-Strava API ──(hourly, systemd timer)──> grindgrid.sync ──> SQLite
+Garmin Connect ──(hourly, systemd timer)──> grindgrid.sync ──> SQLite
                                                              │
                      browser  <── GET /           (SVG)  ────┤ grindgrid.web
        Scriptable widget (iOS) <── GET /api/days  (JSON) ────┘
 ```
 
-- **Zero runtime dependencies**: Python standard library only (`urllib`, `sqlite3`, `http.server`, `zoneinfo`).
+- **Small footprint**: the grid, storage and web server use only the Python standard library (`sqlite3`, `http.server`, `zoneinfo`).
+  The single dependency, [python-garminconnect](https://github.com/cyberjunky/python-garminconnect), is used only for syncing.
 - **Sync** pulls the full history on first run. After that it re-fetches the last 30 days each hour,
-  which picks up edits, and drops activities deleted on Strava within that window.
+  which picks up edits, and drops activities deleted in Garmin Connect within that window.
   `python -m grindgrid.sync --full` re-syncs everything.
 - **Days** are bucketed by the activity's local start date. Several workouts on one day add up.
   Manual entries with no moving time fall back to elapsed time.
-- **OAuth tokens** are refreshed automatically. Strava rotates the refresh token, and the new one is saved each time.
+- **Login** happens once, interactively, with MFA supported. The password is never stored; only session tokens are,
+  and the library refreshes them automatically.
 - **Widget**: `widget/grindgrid.js` runs in [Scriptable](https://scriptable.app). The server computes
   every day's level and colour group; the widget only draws, and it shows the last cached grid when offline.
 - The server is meant for a home network or a VPN such as Tailscale. It has no auth of its own,
@@ -41,23 +43,22 @@ Strava API ──(hourly, systemd timer)──> grindgrid.sync ──> SQLite
 
 ```bash
 export GRINDGRID_DATA=./data
-python -m grindgrid.sync --demo     # fake activities, no network
+python -m grindgrid.sync --demo     # fake activities, no network, no dependencies
 python -m grindgrid.web             # http://localhost:8080
 python -m unittest                  # tests
 ```
 
-## Connect a real Strava account
+## Connect a Garmin account
 
-1. Create an API application at <https://www.strava.com/settings/api> with
-   **Authorization Callback Domain** set to `localhost`.
-2. Put the client ID and secret in an env file (see `.env.example`, or `/etc/default/grindgrid` on a server).
-3. Open `http://localhost:8080/auth` and approve. On a remote box, tunnel first:
-   `ssh -L 8080:localhost:8080 <server>`.
-4. Run `python -m grindgrid.sync` once, or let the timer do it.
+```bash
+python -m venv venv && venv/bin/pip install -r requirements.txt
+venv/bin/python -m grindgrid.garmin     # asks for e-mail, password, MFA code; stores tokens in $GRINDGRID_DATA/garmin
+venv/bin/python -m grindgrid.sync       # first run pulls the full history
+```
 
-Server install: copy the repo to `/opt/grindgrid`, create a `grindgrid` system user that owns
-`/var/lib/grindgrid`, then install the units from `deploy/` and enable
-`grindgrid-web.service` and `grindgrid-sync.timer`.
+Server install: copy the repo to `/opt/grindgrid`, create a venv there, and create a `grindgrid`
+system user that owns `/var/lib/grindgrid`. Run the login as that user, then install the units
+from `deploy/` and enable `grindgrid-web.service` and `grindgrid-sync.timer`.
 
 ## iPhone widget
 
@@ -67,4 +68,5 @@ Server install: copy the repo to `/opt/grindgrid`, create a `grindgrid` system u
 
 ---
 
-Powered by Strava. Not affiliated with or endorsed by Strava.
+grindgrid uses an unofficial Garmin Connect client. It is not affiliated with or endorsed by Garmin,
+and it can break whenever Garmin changes its login flow.

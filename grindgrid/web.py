@@ -1,16 +1,15 @@
-"""HTTP server: SVG grid page, JSON for the widget, one-time Strava login."""
+"""HTTP server: SVG grid page and JSON for the widget."""
 import html
 import json
 import os
-import secrets
 import sys
 import urllib.parse
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from grindgrid import db, strava
+from grindgrid import db
 from grindgrid.days import GROUPS, build_days
-from grindgrid.sync import db_path, today_in, token_path
+from grindgrid.sync import db_path, today_in
 
 THEMES = ("binary", "intensity", "sports")
 # keep in sync with widget/grindgrid.js
@@ -22,7 +21,6 @@ SPORT_COLORS = {"run": "#ff6b3d", "ride": "#3d8bff", "strength": "#a35cff",
 LABELS = {"run": "bieganie", "ride": "rower", "strength": "siła", "swim": "pływanie",
           "walk": "chodzenie", "other": "inne"}
 CELL, GAP = 12, 3
-PENDING_STATES: set[str] = set()  # OAuth CSRF guard: /callback must echo a state /auth issued
 
 
 def day_color(day: dict, theme: str) -> str | None:
@@ -99,7 +97,6 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urllib.parse.urlparse(self.path)
         q = dict(urllib.parse.parse_qsl(url.query))
-        base = os.environ.get("GRINDGRID_BASE_URL", "http://localhost:8080")
         if url.path in ("/", "/api/days"):
             days = app_days(db.connect(db_path()), os.environ.get("TZ", "Europe/Warsaw"))
             if url.path == "/":
@@ -107,20 +104,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, page(days, theme))
             body = {"days": days, "generated": datetime.now(timezone.utc).isoformat()}
             return self.send(200, json.dumps(body), "application/json")
-        if url.path == "/auth":
-            state = secrets.token_urlsafe(16)
-            PENDING_STATES.add(state)
-            loc = strava.authorize_url(os.environ["STRAVA_CLIENT_ID"], base + "/callback", state)
-            return self.send(302, "", headers={"Location": loc})
-        if url.path == "/callback":
-            if "code" not in q:
-                return self.send(400, "Strava login failed: " + html.escape(q.get("error", "no code")))
-            if q.get("state") not in PENDING_STATES:
-                return self.send(400, "Unknown login attempt: start again at /auth")
-            PENDING_STATES.discard(q["state"])
-            strava.exchange_code(os.environ["STRAVA_CLIENT_ID"], os.environ["STRAVA_CLIENT_SECRET"],
-                                 q["code"], token_path())
-            return self.send(200, "Connected. Sync will start within the hour.")
         self.send(404, "not found")
 
     def log_message(self, fmt, *args):

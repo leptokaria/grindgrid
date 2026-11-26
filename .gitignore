@@ -1,7 +1,8 @@
 .env
 *.db
-tokens.json
+garmin_tokens.json
 data/
 __pycache__/
 .superpowers/
 docs/superpowers/
+venv/

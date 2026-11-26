@@ -1,6 +1,5 @@
-"""Pull activities from Strava into SQLite. Run hourly by a systemd timer."""
+"""Pull activities from Garmin Connect into SQLite. Run hourly by a systemd timer."""
 import argparse
-import calendar
 import os
 import random
 import sys
@@ -8,27 +7,26 @@ from datetime import date, datetime, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-from grindgrid import db, strava
+from grindgrid import db, garmin
 
 RESYNC_DAYS = 30
 
 
-def sync(conn, fetch: Callable[[int | None], list[dict]], today: date, full: bool = False) -> tuple[int, int]:
+def sync(conn, fetch: Callable[[date | None], list[dict]], today: date, full: bool = False) -> tuple[int, int]:
     latest = db.latest_start(conn)
     if full or latest is None:
-        after, since = None, ""
+        start, since = None, ""
     else:
         start = min(date.fromisoformat(latest[:10]), today - timedelta(days=RESYNC_DAYS))
-        # Strava filters `after` on UTC start; fetch one extra day so local-date deletes never outrun it
-        after, since = calendar.timegm(start.timetuple()) - 86400, start.isoformat()
-    activities = fetch(after)  # raises before anything is deleted
+        since = start.isoformat()  # Garmin filters by local date, same key we delete by
+    activities = fetch(start)  # raises before anything is deleted
     db.upsert(conn, activities)
     return len(activities), db.delete_missing(conn, since, {a["id"] for a in activities})
 
 
 def demo_activities(today: date, seed: int = 1) -> list[dict]:
     rng = random.Random(seed)
-    sports = ["Run", "Run", "Ride", "WeightTraining", "Swim", "Walk", "Yoga"]
+    sports = ["running", "running", "road_biking", "strength_training", "lap_swimming", "walking", "yoga"]
     out, next_id = [], 10**9
     for i in range(365):
         day = today - timedelta(days=i)
@@ -54,8 +52,8 @@ def db_path() -> str:
     return os.path.join(data_dir(), "grindgrid.db")
 
 
-def token_path() -> str:
-    return os.path.join(data_dir(), "tokens.json")
+def garmin_token_dir() -> str:
+    return os.path.join(data_dir(), "garmin")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,12 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         db.upsert(conn, demo_activities(today))
         print("demo data loaded")
         return 0
-    tokens = token_path()
-    if not os.path.exists(tokens):
-        print("no Strava tokens: open /auth first", file=sys.stderr)
+    tokens = garmin_token_dir()
+    if not os.path.isdir(tokens):
+        print("no Garmin login: run `python -m grindgrid.garmin` first", file=sys.stderr)
         return 1
-    cid, secret = os.environ["STRAVA_CLIENT_ID"], os.environ["STRAVA_CLIENT_SECRET"]
-    fetch = lambda after: strava.fetch_activities(strava.access_token(cid, secret, tokens), after)
+    g = garmin.client(tokens)
+    fetch = lambda since: garmin.fetch_activities(g, since, today)
     added, deleted = sync(conn, fetch, today, full=args.full)
     print(f"synced {added} activities, removed {deleted}")
     return 0

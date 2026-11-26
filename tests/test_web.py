@@ -13,8 +13,7 @@ from grindgrid import sync, web
 class WebTest(unittest.TestCase):
     def setUp(self):
         self.dir = tempfile.TemporaryDirectory()
-        self.env = mock.patch.dict(os.environ, {"GRINDGRID_DATA": self.dir.name, "STRAVA_CLIENT_ID": "42",
-                                                "GRINDGRID_BASE_URL": "http://localhost:8080"})
+        self.env = mock.patch.dict(os.environ, {"GRINDGRID_DATA": self.dir.name})
         self.env.start()
         self.server = web.make_server("127.0.0.1", 0)
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
@@ -46,28 +45,6 @@ class WebTest(unittest.TestCase):
 
     def test_unknown_theme_falls_back(self):
         self.assertEqual(self.get("/?theme=nope")[0], 200)
-
-    def test_auth_redirects_to_strava(self):
-        opener = urllib.request.build_opener(type("NoRedirect", (urllib.request.HTTPRedirectHandler,),
-                                                  {"redirect_request": lambda *a: None}))
-        with self.assertRaises(urllib.error.HTTPError) as e:
-            opener.open(self.base + "/auth")
-        self.assertEqual(e.exception.code, 302)
-        loc = e.exception.headers["Location"]
-        self.assertTrue(loc.startswith("https://www.strava.com/oauth/authorize"))
-        self.assertIn("client_id=42", loc)
-
-    def test_callback_rejects_missing_or_wrong_state(self):
-        for qs in ("/callback?code=x", "/callback?code=x&state=forged"):
-            with self.assertRaises(urllib.error.HTTPError) as e:
-                self.get(qs)
-            self.assertEqual(e.exception.code, 400)
-        self.assertFalse(os.path.exists(os.path.join(self.dir.name, "tokens.json")))
-
-    def test_callback_without_code_is_400(self):
-        with self.assertRaises(urllib.error.HTTPError) as e:
-            self.get("/callback?error=access_denied")
-        self.assertEqual(e.exception.code, 400)
 
     def test_unknown_path_404(self):
         with self.assertRaises(urllib.error.HTTPError) as e:

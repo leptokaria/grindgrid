@@ -1,4 +1,3 @@
-import calendar
 import unittest
 from datetime import date
 
@@ -39,9 +38,9 @@ class SyncTest(unittest.TestCase):
         db.upsert(self.conn, [act(1, "2026-11-20")])
         fetch = FakeFetch([act(1, "2026-11-20")])
         sync(self.conn, fetch, TODAY)
-        self.assertEqual(fetch.calls, [calendar.timegm((2026, 10, 26, 0, 0, 0))])
+        self.assertEqual(fetch.calls, [date(2026, 10, 27)])
 
-    def test_deleted_on_strava_removed_in_window(self):
+    def test_deleted_at_source_removed_in_window(self):
         db.upsert(self.conn, [act(1, "2026-01-05"), act(2, "2026-11-20"), act(3, "2026-11-21")])
         fetch = FakeFetch([act(3, "2026-11-21")])
         self.assertEqual(sync(self.conn, fetch, TODAY), (1, 1))
@@ -60,13 +59,12 @@ class SyncTest(unittest.TestCase):
         self.assertEqual(fetch.calls, [None])
 
     def test_edge_day_after_local_midnight_not_deleted(self):
-        # Warsaw run at local 00:30 on the window's first day = 23:30Z the day before
+        # run at local 00:30 on the window's first day; fetch filters by local date like Garmin
         edge = act(7, "2026-10-27")
-        edge["start_date_local"] = "2026-10-27T00:30:00Z"
-        utc_epoch = {7: calendar.timegm((2026, 10, 26, 23, 30, 0)), 8: calendar.timegm((2026, 11, 20, 6, 0, 0))}
+        edge["start_date_local"] = "2026-10-27T00:30:00"
         db.upsert(self.conn, [edge, act(8, "2026-11-20")])
         stored = db.all_activities(self.conn)
-        fetch = lambda after: [a for a in stored if after is None or utc_epoch[a["id"]] > after]
+        fetch = lambda since: [a for a in stored if since is None or a["start_date_local"][:10] >= since.isoformat()]
         sync(self.conn, fetch, TODAY)
         self.assertEqual({a["id"] for a in db.all_activities(self.conn)}, {7, 8})
 
