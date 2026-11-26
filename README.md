@@ -16,6 +16,14 @@ home-screen widget shows it at a glance.
 | `intensity` | total training time that day: ≤30 min, ≤60, ≤90, 90+ | ![](docs/screenshots/intensity.png) |
 | `sports` | sport with the most time that day: run, ride, strength, swim, walk, other | ![](docs/screenshots/sports.png) |
 
+### Accent colours
+
+`binary` and `intensity` come in eight accents: `green` (default), `ember`, `lava`, `ice`, `violet`,
+`gold`, `teal` and `pink`. In the browser use `/?theme=intensity&accent=ember`. In the widget add the
+accent as the third part of the parameter, for example `http://<server>:8080;intensity;ember`.
+
+![accent colours](docs/screenshots/accents.png)
+
 ## How it works
 
 ```
@@ -64,7 +72,7 @@ from `deploy/` and enable `grindgrid-web.service` and `grindgrid-sync.timer`.
 
 1. Install Scriptable and create a new script from `widget/grindgrid.js`.
 2. Add a Scriptable widget (small, medium or large), choose the script, and set **Parameter** to
-   `http://<server>:8080;intensity`. The theme part is optional.
+   `http://<server>:8080;intensity;ember`. The theme and accent parts are optional.
 
 ---
 

@@ -1,10 +1,11 @@
 // grindgrid — Scriptable widget.
-// Widget parameter: "<base_url>[;theme]", e.g. "http://192.0.2.10:8080;intensity"
-// Themes: binary (default), intensity, sports. Colours mirror grindgrid/web.py.
+// Widget parameter: "<base_url>[;theme[;accent]]", e.g. "http://192.0.2.10:8080;intensity;ember"
+// Themes: binary (default), intensity, sports. Accents: see ACCENTS. Colours mirror grindgrid/web.py.
 
 const EMPTY = "#9aa4b140"
-const BINARY = "#2fbf71"
-const SHADES = ["#26c1654d", "#26c16585", "#26c165bb", "#26c165"]
+const ACCENTS = { green: "#26c165", ember: "#ff7a1a", lava: "#ff3b4e", ice: "#3d9bff",
+                  violet: "#a66bff", gold: "#f5c518", teal: "#14c8b8", pink: "#ff4fa3" }
+const ALPHA = ["4d", "85", "bb", ""]
 const SPORT_COLORS = { run: "#ff6b3d", ride: "#3d8bff", strength: "#a35cff",
                        swim: "#16c1c8", walk: "#7cc35a", other: "#e5b52b" }
 const WEEKS = { small: 10, medium: 20, large: 26, extraLarge: 53 }
@@ -12,8 +13,9 @@ const WEEKS = { small: 10, medium: 20, large: 26, extraLarge: 53 }
 // Used when there is no widget parameter, e.g. when you run the script inside the Scriptable app.
 const DEFAULT_PARAM = "" // e.g. "http://192.0.2.10:8080;binary"
 
-const [base, themeArg] = (args.widgetParameter || DEFAULT_PARAM).split(";").map(s => s.trim())
+const [base, themeArg, accentArg] = (args.widgetParameter || DEFAULT_PARAM).split(";").map(s => s.trim())
 const theme = ["binary", "intensity", "sports"].includes(themeArg) ? themeArg : "binary"
+const accent = ACCENTS[accentArg] || ACCENTS.green
 const family = config.widgetFamily || "medium"
 
 const fm = FileManager.local()
@@ -27,9 +29,9 @@ function color(hex) {
 function dayColor(d) {
   if (d.future) return null
   if (d.level === 0) return EMPTY
-  if (theme === "intensity") return SHADES[d.level - 1]
+  if (theme === "intensity") return accent + ALPHA[d.level - 1]
   if (theme === "sports") return SPORT_COLORS[d.sport_group]
-  return BINARY
+  return accent
 }
 
 async function loadDays() {

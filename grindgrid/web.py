@@ -14,8 +14,9 @@ from grindgrid.sync import db_path, today_in
 THEMES = ("binary", "intensity", "sports")
 # keep in sync with widget/grindgrid.js
 EMPTY = "#9aa4b140"
-BINARY = "#2fbf71"
-SHADES = ["#26c1654d", "#26c16585", "#26c165bb", "#26c165"]  # alpha ramp reads right on light and dark
+ACCENTS = {"green": "#26c165", "ember": "#ff7a1a", "lava": "#ff3b4e", "ice": "#3d9bff",
+           "violet": "#a66bff", "gold": "#f5c518", "teal": "#14c8b8", "pink": "#ff4fa3"}
+ALPHA = ["4d", "85", "bb", ""]  # intensity = alpha ramp of the accent; reads right on light and dark
 SPORT_COLORS = {"run": "#ff6b3d", "ride": "#3d8bff", "strength": "#a35cff",
                 "swim": "#16c1c8", "walk": "#7cc35a", "other": "#e5b52b"}
 LABELS = {"run": "bieganie", "ride": "rower", "strength": "siła", "swim": "pływanie",
@@ -23,24 +24,24 @@ LABELS = {"run": "bieganie", "ride": "rower", "strength": "siła", "swim": "pły
 CELL, GAP = 12, 3
 
 
-def day_color(day: dict, theme: str) -> str | None:
+def day_color(day: dict, theme: str, accent: str = "green") -> str | None:
     if day["future"]:
         return None
     if day["level"] == 0:
         return EMPTY
     if theme == "intensity":
-        return SHADES[day["level"] - 1]
+        return ACCENTS[accent] + ALPHA[day["level"] - 1]
     if theme == "sports":
         return SPORT_COLORS[day["sport_group"]]
-    return BINARY
+    return ACCENTS[accent]
 
 
-def render_svg(days: list[dict], theme: str) -> str:
+def render_svg(days: list[dict], theme: str, accent: str = "green") -> str:
     step = CELL + GAP
     weeks = (len(days) + 6) // 7
     cells = []
     for i, d in enumerate(days):
-        color = day_color(d, theme)
+        color = day_color(d, theme, accent)
         if color is None:
             continue
         tip = f"{d['date']}: {d['seconds'] // 60} min"
@@ -50,13 +51,14 @@ def render_svg(days: list[dict], theme: str) -> str:
             f'role="img" aria-label="training grid">{"".join(cells)}</svg>')
 
 
-def legend(theme: str) -> str:
+def legend(theme: str, accent: str) -> str:
     if theme == "sports":
         items = [(SPORT_COLORS[g], LABELS[g]) for g in GROUPS]
     elif theme == "intensity":
-        items = [(EMPTY, "0"), (SHADES[0], "≤30 min"), (SHADES[1], "≤60"), (SHADES[2], "≤90"), (SHADES[3], "90+")]
+        a = ACCENTS[accent]
+        items = [(EMPTY, "0"), (a + ALPHA[0], "≤30 min"), (a + ALPHA[1], "≤60"), (a + ALPHA[2], "≤90"), (a, "90+")]
     else:
-        items = [(EMPTY, "brak"), (BINARY, "trening")]
+        items = [(EMPTY, "brak"), (ACCENTS[accent], "trening")]
     return "".join(f'<span><i style="background:{c}"></i>{html.escape(t)}</span>' for c, t in items)
 
 
@@ -69,14 +71,17 @@ nav a{{margin-right:1rem;color:inherit}} nav a.on{{font-weight:700}}
 .grid{{overflow-x:auto;margin:1rem 0}} .legend span{{margin-right:1rem}}
 .legend i{{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:4px;vertical-align:-1px}}
 </style>
-<h1>grindgrid</h1><nav>{nav}</nav><div class="grid">{svg}</div><div class="legend">{legend}</div>
+<h1>grindgrid</h1><nav>{nav}</nav><nav>{accents}</nav><div class="grid">{svg}</div><div class="legend">{legend}</div>
 <p>{active} dni z treningiem w ostatnich 12 miesiącach</p></html>"""
 
 
-def page(days: list[dict], theme: str) -> str:
-    nav = "".join(f'<a href="/?theme={t}"{" class=on" if t == theme else ""}>{t}</a>' for t in THEMES)
+def page(days: list[dict], theme: str, accent: str = "green") -> str:
+    link = lambda t, a, label, on: f'<a href="/?theme={t}&accent={a}"{" class=on" if on else ""}>{label}</a>'
+    nav = "".join(link(t, accent, t, t == theme) for t in THEMES)
+    accents = "".join(link(theme, a, f'<i style="color:{c}">●</i> {a}', a == accent) for a, c in ACCENTS.items())
     active = sum(1 for d in days if d["level"])
-    return PAGE.format(nav=nav, svg=render_svg(days, theme), legend=legend(theme), active=active)
+    return PAGE.format(nav=nav, accents=accents, svg=render_svg(days, theme, accent),
+                       legend=legend(theme, accent), active=active)
 
 
 def app_days(conn, tz: str) -> list[dict]:
@@ -101,7 +106,8 @@ class Handler(BaseHTTPRequestHandler):
             days = app_days(db.connect(db_path()), os.environ.get("TZ", "Europe/Warsaw"))
             if url.path == "/":
                 theme = q.get("theme") if q.get("theme") in THEMES else "binary"
-                return self.send(200, page(days, theme))
+                accent = q.get("accent") if q.get("accent") in ACCENTS else "green"
+                return self.send(200, page(days, theme, accent))
             body = {"days": days, "generated": datetime.now(timezone.utc).isoformat()}
             return self.send(200, json.dumps(body), "application/json")
         self.send(404, "not found")

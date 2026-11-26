@@ -54,12 +54,34 @@ class WebTest(unittest.TestCase):
 
 class ColorTest(unittest.TestCase):
     def test_colors_differ_by_theme(self):
-        day = {"date": "2026-11-24", "seconds": 7200, "level": 4, "sport_group": "strength", "future": False}
+        day = {"date": "2026-11-24", "seconds": 1200, "level": 1, "sport_group": "strength", "future": False}
         colors = {t: web.day_color(day, t) for t in web.THEMES}
         self.assertEqual(len(set(colors.values())), 3)
         self.assertIsNone(web.day_color(dict(day, future=True), "binary"))
         empty = dict(day, level=0, seconds=0, sport_group=None)
         self.assertEqual(len({web.day_color(empty, t) for t in web.THEMES}), 1)
+
+
+    def test_accent_recolors_binary_and_intensity_only(self):
+        day = {"date": "2026-11-24", "seconds": 1200, "level": 1, "sport_group": "run", "future": False}
+        ember = web.ACCENTS["ember"]
+        self.assertEqual(web.day_color(day, "binary", "ember"), ember)
+        self.assertEqual(web.day_color(day, "intensity", "ember"), ember + "4d")
+        self.assertEqual(web.day_color(dict(day, level=4), "intensity", "ember"), ember)
+        self.assertEqual(web.day_color(day, "sports", "ember"), web.day_color(day, "sports"))
+        self.assertEqual(len(web.ACCENTS), 8)
+
+
+class AccentPageTest(WebTest):
+    def test_accent_query_changes_page_colors(self):
+        sync.main(["--demo"])
+        body = self.get("/?accent=ember")[1]
+        self.assertIn(web.ACCENTS["ember"], body)
+        self.assertNotIn('fill="' + web.ACCENTS["green"] + '"', body)  # grid cells, not the picker
+
+    def test_unknown_accent_falls_back_to_green(self):
+        sync.main(["--demo"])
+        self.assertIn(web.ACCENTS["green"], self.get("/?accent=nope")[1])
 
 
 if __name__ == "__main__":
