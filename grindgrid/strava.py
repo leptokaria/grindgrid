@@ -22,10 +22,10 @@ def _get(url: str, headers: dict) -> list:
         return json.load(r)
 
 
-def authorize_url(client_id: str, redirect_uri: str) -> str:
+def authorize_url(client_id: str, redirect_uri: str, state: str) -> str:
     return AUTH_URL + "?" + urllib.parse.urlencode({
         "client_id": client_id, "redirect_uri": redirect_uri, "response_type": "code",
-        "scope": "activity:read_all", "approval_prompt": "auto"})
+        "scope": "activity:read_all", "approval_prompt": "auto", "state": state})
 
 
 def _save(token_path: str, resp: dict) -> None:

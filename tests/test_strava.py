@@ -19,10 +19,11 @@ class StravaTest(unittest.TestCase):
             json.dump(tok, f)
 
     def test_authorize_url_has_scope(self):
-        url = strava.authorize_url("123", "http://localhost:8080/callback")
+        url = strava.authorize_url("123", "http://localhost:8080/callback", "nonce1")
         self.assertIn("scope=activity%3Aread_all", url)
         self.assertIn("redirect_uri=http%3A%2F%2Flocalhost%3A8080%2Fcallback", url)
         self.assertIn("client_id=123", url)
+        self.assertIn("state=nonce1", url)
 
     def test_exchange_code_saves_tokens_private(self):
         post = lambda url, data: {"access_token": "a", "refresh_token": "r", "expires_at": 99, "athlete": {}}

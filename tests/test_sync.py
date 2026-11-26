@@ -39,7 +39,7 @@ class SyncTest(unittest.TestCase):
         db.upsert(self.conn, [act(1, "2026-11-20")])
         fetch = FakeFetch([act(1, "2026-11-20")])
         sync(self.conn, fetch, TODAY)
-        self.assertEqual(fetch.calls, [calendar.timegm((2026, 10, 27, 0, 0, 0))])
+        self.assertEqual(fetch.calls, [calendar.timegm((2026, 10, 26, 0, 0, 0))])
 
     def test_deleted_on_strava_removed_in_window(self):
         db.upsert(self.conn, [act(1, "2026-01-05"), act(2, "2026-11-20"), act(3, "2026-11-21")])
@@ -58,6 +58,17 @@ class SyncTest(unittest.TestCase):
         fetch = FakeFetch([act(2, "2026-11-20")])
         self.assertEqual(sync(self.conn, fetch, TODAY, full=True), (1, 1))
         self.assertEqual(fetch.calls, [None])
+
+    def test_edge_day_after_local_midnight_not_deleted(self):
+        # Warsaw run at local 00:30 on the window's first day = 23:30Z the day before
+        edge = act(7, "2026-10-27")
+        edge["start_date_local"] = "2026-10-27T00:30:00Z"
+        utc_epoch = {7: calendar.timegm((2026, 10, 26, 23, 30, 0)), 8: calendar.timegm((2026, 11, 20, 6, 0, 0))}
+        db.upsert(self.conn, [edge, act(8, "2026-11-20")])
+        stored = db.all_activities(self.conn)
+        fetch = lambda after: [a for a in stored if after is None or utc_epoch[a["id"]] > after]
+        sync(self.conn, fetch, TODAY)
+        self.assertEqual({a["id"] for a in db.all_activities(self.conn)}, {7, 8})
 
     def test_demo_is_deterministic_and_fake(self):
         a, b = demo_activities(TODAY), demo_activities(TODAY)

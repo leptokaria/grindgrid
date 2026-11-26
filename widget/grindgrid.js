@@ -7,7 +7,7 @@ const BINARY = "#2fbf71"
 const SHADES = ["#26c1654d", "#26c16585", "#26c165bb", "#26c165"]
 const SPORT_COLORS = { run: "#ff6b3d", ride: "#3d8bff", strength: "#a35cff",
                        swim: "#16c1c8", walk: "#7cc35a", other: "#e5b52b" }
-const WEEKS = { small: 10, medium: 20, large: 26 }
+const WEEKS = { small: 10, medium: 20, large: 26, extraLarge: 53 }
 
 const [base, themeArg] = (args.widgetParameter || "").split(";").map(s => s.trim())
 const theme = ["binary", "intensity", "sports"].includes(themeArg) ? themeArg : "binary"
@@ -72,7 +72,13 @@ async function build() {
     w.addText("grindgrid: no data").font = Font.mediumSystemFont(13)
     return w
   }
-  const days = result.days.slice(-WEEKS[family] * 7)
+  if (family.startsWith("accessory")) {
+    // lock screen: too small and monochrome for a grid, show the last 4 weeks as text
+    const n = result.days.filter(d => !d.future).slice(-28).filter(d => d.level > 0).length
+    w.addText(`${n}/28 dni`).font = Font.semiboldSystemFont(14)
+    return w
+  }
+  const days = result.days.slice(-(WEEKS[family] || WEEKS.medium) * 7)
   const head = w.addStack()
   const title = head.addText("grindgrid")
   title.font = Font.semiboldSystemFont(12)
@@ -82,7 +88,7 @@ async function build() {
   info.font = Font.systemFont(11)
   info.textOpacity = 0.6
   w.addSpacer(6)
-  const sizes = { small: [134, 100], medium: [300, 110], large: [300, 280] }
+  const sizes = { small: [134, 100], medium: [300, 110], large: [300, 280], extraLarge: [660, 280] }
   const [gw, gh] = sizes[family] || sizes.medium
   const img = w.addImage(drawGrid(days, gw, gh))
   img.centerAlignImage()

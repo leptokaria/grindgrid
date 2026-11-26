@@ -57,6 +57,13 @@ class WebTest(unittest.TestCase):
         self.assertTrue(loc.startswith("https://www.strava.com/oauth/authorize"))
         self.assertIn("client_id=42", loc)
 
+    def test_callback_rejects_missing_or_wrong_state(self):
+        for qs in ("/callback?code=x", "/callback?code=x&state=forged"):
+            with self.assertRaises(urllib.error.HTTPError) as e:
+                self.get(qs)
+            self.assertEqual(e.exception.code, 400)
+        self.assertFalse(os.path.exists(os.path.join(self.dir.name, "tokens.json")))
+
     def test_callback_without_code_is_400(self):
         with self.assertRaises(urllib.error.HTTPError) as e:
             self.get("/callback?error=access_denied")

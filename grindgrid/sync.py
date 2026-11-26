@@ -19,8 +19,8 @@ def sync(conn, fetch: Callable[[int | None], list[dict]], today: date, full: boo
         after, since = None, ""
     else:
         start = min(date.fromisoformat(latest[:10]), today - timedelta(days=RESYNC_DAYS))
-        # shortcut: UTC midnight, a few hours off local; the 30-day overlap covers it
-        after, since = calendar.timegm(start.timetuple()), start.isoformat()
+        # Strava filters `after` on UTC start; fetch one extra day so local-date deletes never outrun it
+        after, since = calendar.timegm(start.timetuple()) - 86400, start.isoformat()
     activities = fetch(after)  # raises before anything is deleted
     db.upsert(conn, activities)
     return len(activities), db.delete_missing(conn, since, {a["id"] for a in activities})
