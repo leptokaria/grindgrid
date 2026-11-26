@@ -9,7 +9,10 @@ const SPORT_COLORS = { run: "#ff6b3d", ride: "#3d8bff", strength: "#a35cff",
                        swim: "#16c1c8", walk: "#7cc35a", other: "#e5b52b" }
 const WEEKS = { small: 10, medium: 20, large: 26, extraLarge: 53 }
 
-const [base, themeArg] = (args.widgetParameter || "").split(";").map(s => s.trim())
+// Used when there is no widget parameter, e.g. when you run the script inside the Scriptable app.
+const DEFAULT_PARAM = "" // e.g. "http://192.0.2.10:8080;binary"
+
+const [base, themeArg] = (args.widgetParameter || DEFAULT_PARAM).split(";").map(s => s.trim())
 const theme = ["binary", "intensity", "sports"].includes(themeArg) ? themeArg : "binary"
 const family = config.widgetFamily || "medium"
 
@@ -30,7 +33,7 @@ function dayColor(d) {
 }
 
 async function loadDays() {
-  if (!base) throw new Error("no server")
+  if (!base) throw new Error("no server: set the widget Parameter or DEFAULT_PARAM")
   const req = new Request(base.replace(/\/$/, "") + "/api/days")
   req.timeoutInterval = 10
   const data = await req.loadJSON()
@@ -66,10 +69,13 @@ function drawGrid(days, width, height) {
 async function build() {
   const w = new ListWidget()
   w.setPadding(12, 12, 12, 12)
-  let result
-  try { result = await loadDays() } catch (e) { result = cachedDays() }
+  let result, error
+  try { result = await loadDays() } catch (e) { error = e; result = cachedDays() }
   if (!result) {
     w.addText("grindgrid: no data").font = Font.mediumSystemFont(13)
+    const why = w.addText(String(error && error.message || error))
+    why.font = Font.systemFont(10)
+    why.textOpacity = 0.6
     return w
   }
   if (family.startsWith("accessory")) {
