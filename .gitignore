@@ -1,0 +1,6 @@
+.env
+*.db
+tokens.json
+data/
+__pycache__/
+.superpowers/
