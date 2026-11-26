@@ -79,9 +79,10 @@ class AccentPageTest(WebTest):
         self.assertIn(web.ACCENTS["ember"], body)
         self.assertNotIn('fill="' + web.ACCENTS["green"] + '"', body)  # grid cells, not the picker
 
-    def test_unknown_accent_falls_back_to_green(self):
+    def test_default_and_unknown_accent_are_teal(self):
         sync.main(["--demo"])
-        self.assertIn(web.ACCENTS["green"], self.get("/?accent=nope")[1])
+        for path in ("/", "/?accent=nope"):
+            self.assertIn('fill="' + web.ACCENTS["teal"] + '"', self.get(path)[1])
 
 
 if __name__ == "__main__":

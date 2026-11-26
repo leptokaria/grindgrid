@@ -16,6 +16,7 @@ THEMES = ("binary", "intensity", "sports")
 EMPTY = "#9aa4b140"
 ACCENTS = {"green": "#26c165", "ember": "#ff7a1a", "lava": "#ff3b4e", "ice": "#3d9bff",
            "violet": "#a66bff", "gold": "#f5c518", "teal": "#14c8b8", "pink": "#ff4fa3"}
+DEFAULT_ACCENT = "teal"
 ALPHA = ["4d", "85", "bb", ""]  # intensity = alpha ramp of the accent; reads right on light and dark
 SPORT_COLORS = {"run": "#ff6b3d", "ride": "#3d8bff", "strength": "#a35cff",
                 "swim": "#16c1c8", "walk": "#7cc35a", "other": "#e5b52b"}
@@ -24,7 +25,7 @@ LABELS = {"run": "bieganie", "ride": "rower", "strength": "siła", "swim": "pły
 CELL, GAP = 12, 3
 
 
-def day_color(day: dict, theme: str, accent: str = "green") -> str | None:
+def day_color(day: dict, theme: str, accent: str = DEFAULT_ACCENT) -> str | None:
     if day["future"]:
         return None
     if day["level"] == 0:
@@ -36,7 +37,7 @@ def day_color(day: dict, theme: str, accent: str = "green") -> str | None:
     return ACCENTS[accent]
 
 
-def render_svg(days: list[dict], theme: str, accent: str = "green") -> str:
+def render_svg(days: list[dict], theme: str, accent: str = DEFAULT_ACCENT) -> str:
     step = CELL + GAP
     weeks = (len(days) + 6) // 7
     cells = []
@@ -75,7 +76,7 @@ nav a{{margin-right:1rem;color:inherit}} nav a.on{{font-weight:700}}
 <p>{active} dni z treningiem w ostatnich 12 miesiącach</p></html>"""
 
 
-def page(days: list[dict], theme: str, accent: str = "green") -> str:
+def page(days: list[dict], theme: str, accent: str = DEFAULT_ACCENT) -> str:
     link = lambda t, a, label, on: f'<a href="/?theme={t}&accent={a}"{" class=on" if on else ""}>{label}</a>'
     nav = "".join(link(t, accent, t, t == theme) for t in THEMES)
     accents = "".join(link(theme, a, f'<i style="color:{c}">●</i> {a}', a == accent) for a, c in ACCENTS.items())
@@ -106,7 +107,7 @@ class Handler(BaseHTTPRequestHandler):
             days = app_days(db.connect(db_path()), os.environ.get("TZ", "Europe/Warsaw"))
             if url.path == "/":
                 theme = q.get("theme") if q.get("theme") in THEMES else "binary"
-                accent = q.get("accent") if q.get("accent") in ACCENTS else "green"
+                accent = q.get("accent") if q.get("accent") in ACCENTS else DEFAULT_ACCENT
                 return self.send(200, page(days, theme, accent))
             body = {"days": days, "generated": datetime.now(timezone.utc).isoformat()}
             return self.send(200, json.dumps(body), "application/json")

@@ -15,7 +15,7 @@ const DEFAULT_PARAM = "" // e.g. "http://192.0.2.10:8080;binary"
 
 const [base, themeArg, accentArg] = (args.widgetParameter || DEFAULT_PARAM).split(";").map(s => s.trim())
 const theme = ["binary", "intensity", "sports"].includes(themeArg) ? themeArg : "binary"
-const accent = ACCENTS[accentArg] || ACCENTS.green
+const accent = ACCENTS[accentArg] || ACCENTS.teal
 const family = config.widgetFamily || "medium"
 
 const fm = FileManager.local()

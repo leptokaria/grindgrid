@@ -18,8 +18,8 @@ home-screen widget shows it at a glance.
 
 ### Accent colours
 
-`binary` and `intensity` come in eight accents: `green` (default), `ember`, `lava`, `ice`, `violet`,
-`gold`, `teal` and `pink`. In the browser use `/?theme=intensity&accent=ember`. In the widget add the
+`binary` and `intensity` come in eight accents: `teal` (default), `green`, `ember`, `lava`, `ice`,
+`violet`, `gold` and `pink`. In the browser use `/?theme=intensity&accent=ember`. In the widget add the
 accent as the third part of the parameter, for example `http://<server>:8080;intensity;ember`.
 
 ![accent colours](docs/screenshots/accents.png)
