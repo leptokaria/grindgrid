@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from typing import Callable
 from zoneinfo import ZoneInfo
 
-from grindgrid import db
+from grindgrid import db, strava
 
 RESYNC_DAYS = 30
 
@@ -44,10 +44,18 @@ def today_in(tz: str) -> date:
     return datetime.now(ZoneInfo(tz)).date()
 
 
-def db_path() -> str:
+def data_dir() -> str:
     data = os.environ.get("GRINDGRID_DATA", "/var/lib/grindgrid")
     os.makedirs(data, exist_ok=True)
-    return os.path.join(data, "grindgrid.db")
+    return data
+
+
+def db_path() -> str:
+    return os.path.join(data_dir(), "grindgrid.db")
+
+
+def token_path() -> str:
+    return os.path.join(data_dir(), "tokens.json")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -63,7 +71,15 @@ def main(argv: list[str] | None = None) -> int:
         db.upsert(conn, demo_activities(today))
         print("demo data loaded")
         return 0
-    raise NotImplementedError("real Strava sync")
+    tokens = token_path()
+    if not os.path.exists(tokens):
+        print("no Strava tokens: open /auth first", file=sys.stderr)
+        return 1
+    cid, secret = os.environ["STRAVA_CLIENT_ID"], os.environ["STRAVA_CLIENT_SECRET"]
+    fetch = lambda after: strava.fetch_activities(strava.access_token(cid, secret, tokens), after)
+    added, deleted = sync(conn, fetch, today, full=args.full)
+    print(f"synced {added} activities, removed {deleted}")
+    return 0
 
 
 if __name__ == "__main__":
