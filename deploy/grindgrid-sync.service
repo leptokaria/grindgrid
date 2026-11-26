@@ -1,0 +1,11 @@
+[Unit]
+Description=grindgrid Strava sync
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=grindgrid
+WorkingDirectory=/opt/grindgrid
+EnvironmentFile=/etc/default/grindgrid
+ExecStart=/usr/bin/python3 -m grindgrid.sync
